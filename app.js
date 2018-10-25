@@ -1,9 +1,17 @@
+var ball;
+var scale = 30;
+var mouseJoint = null;
+
 function setup() {
     createCanvas(800, 600);
+    frameRate(60);
 
-    b2newWorld(30, createVector(0, 9.8));
-    base(width / 2, height - 2, width, 5);
-    pyramid(5, width * 3 / 4, height - 10, 16, 32);
+    b2newWorld(scale, createVector(0, 9.8));
+    ball = shape('circle', 15, 15, 40, 40);
+    ball.density = 20;
+    ball.bounce = 1;
+    base(5, 5);
+    pyramid(10, width / 2, 15, 16, 16);
 }
 
 function draw() {
@@ -13,13 +21,41 @@ function draw() {
 }
 
 function mousePressed() {
-    var b = shape('circle', 5, height - 8, 20, 20);
-    b.density = 20;
-    b.applyForce(createVector(1, (height - mouseY) / height * 2), 300);
+    var p = new b2Vec2(mouseX/scale, mouseY/scale);
+    p.y = height - p.y;
+    if (!mouseJoint) {
+        var body = b2GetBodyAt(p.x, p.y);
+        if (body) {
+            var def = new b2MouseJointDef();
+                 
+            def.bodyA = ground;
+            def.bodyB = body;
+            def.target = p;
+
+            def.collideConnected = true;
+            def.maxForce = 1000 * body.GetMass();
+            def.dampingRatio = 0;
+
+            mouseJoint = world.CreateJoint(def);
+
+            body.SetAwake(true);
+        }
+    }
 }
 
-function base(x, y, w, h) {
-    return new b2Body('box', false, createVector(x, y), createVector(w, h));
+function mouseDragged() {
+    if (mouseJoint) {
+        var p = new b2Vec2(mouseX/scale, mouseY/scale);
+        p.y = height - p.y;
+        mouseJoint.setTarget(p);
+    }
+}
+
+function base(margin, thickness) {
+    var wallBottom = new b2Body('box', false, createVector(width / 2, height - margin - thickness / 2), createVector(width - 2 * margin, thickness));
+    //var wallTop = new b2Body('box', false, createVector(width / 2, margin + thickness / 2), createVector(width - 2 * margin, thickness));
+    var wallRight = new b2Body('box', false, createVector(width - margin - thickness / 2, height / 2), createVector(thickness, height - 2 * margin));
+    var wallLeft = new b2Body('box', false, createVector(margin + thickness / 2, height / 2), createVector(thickness, height - 2 * margin));
 }
 
 function shape(type, x, y, w, h) {
@@ -37,6 +73,7 @@ function pyramid(n, x, y, w, h) {
         while (i < n) {
             var b = shape('box', _xy.x, _xy.y, wh.x, wh.y);
             b.density = 5;
+            b.bounce = 1;
             _xy.x += wh.x / 2 + wh.x;
             i++;
         }
